@@ -6057,6 +6057,10 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
    real(R8Ki)        :: r(3)        ! nodal position relative to root
    real(R8Ki)        :: NodeRot(3, 3)
 
+   NodeRot = reshape((/ 1.0_BDKi, 0.0_BDKi, 0.0_BDKi, &
+                        0.0_BDKi, 1.0_BDKi, 0.0_BDKi, &
+                        0.0_BDKi, 0.0_BDKi, 1.0_BDKi /), shape(NodeRot))
+
    ! 1. Velocities relative to root
    ! element loops
    do elem = 1, p%elem_total
@@ -6096,7 +6100,7 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
    do j = 2, p%node_total
 
       ! Loop over the nodes that apply to the damping matrix, so don't include the root node.
-      call BD_CrvMatrixR(x%q(4:6, j), NodeRot)
+      !call BD_CrvMatrixR(x%q(4:6, j), NodeRot) ! Use identity instead
 
       k = (j - 2) * 6
       m%DampedVelocities(k+1:k+3) = matmul(transpose(NodeRot), m%DampedVelocities(k+1:k+3))
@@ -6109,7 +6113,7 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
    ! 4. Rotate to correct coordinates and subtract from m%LP_RHS_LU
    do j = 2, p%node_total
 
-      call BD_CrvMatrixR(x%q(4:6, j), NodeRot)
+      ! call BD_CrvMatrixR(x%q(4:6, j), NodeRot) ! Use identity instead
 
       k = (j - 2) * 6
       m%LP_RHS_LU(k+1:k+3) = m%LP_RHS_LU(k+1:k+3) - matmul(NodeRot, m%ModalDampingF(k+1:k+3))
@@ -6126,7 +6130,7 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
       do j = 2, p%node_total
 
          ! Loop over the nodes that apply to the damping matrix, so don't include the root node.
-         call BD_CrvMatrixR(x%q(4:6, j), NodeRot)
+         ! call BD_CrvMatrixR(x%q(4:6, j), NodeRot) ! Use identity instead
 
          k = (j - 2) * 6
 
