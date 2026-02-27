@@ -4878,7 +4878,8 @@ SUBROUTINE BD_DynamicSolutionGA2( x, OtherState, p, m, ErrStat, ErrMsg)
 
       ! Modal damping
       IF(p%damp_flag .EQ. 2) THEN
-         CALL BD_AddModalDampingRHS(p, x, OtherState, m, fact)
+         print *, 'Modal damping does not work on this branch in the BeamDyn module.'
+         ! CALL BD_AddModalDampingRHS(u, p, x, OtherState, m, fact)
 
          IF ( (p%tngt_stf_fd .OR. p%tngt_stf_comp) .AND. fact ) then
             ! FD does not get incorporated to everything else,
@@ -5124,7 +5125,7 @@ SUBROUTINE BD_FD_GA2_DAMPING(p_in, x_in, OtherState_in, m_in)
 
          m%LP_RHS_LU = 0.0_BDKi
 
-         CALL BD_AddModalDampingRHS(p, x, OtherState, m, .FALSE.)
+         ! CALL BD_AddModalDampingRHS(u, p, x, OtherState, m, .FALSE.)
 
          Damping_FD(:, k) = Damping_FD(:, k) + m%LP_RHS_LU
 
@@ -5147,7 +5148,7 @@ SUBROUTINE BD_FD_GA2_DAMPING(p_in, x_in, OtherState_in, m_in)
 
          m%LP_RHS_LU = 0.0_BDKi
 
-         CALL BD_AddModalDampingRHS(p, x, OtherState, m, .FALSE.)
+         ! CALL BD_AddModalDampingRHS(u, p, x, OtherState, m, .FALSE.)
 
          Damping_FD(:, k) = Damping_FD(:, k) - m%LP_RHS_LU
 
@@ -5170,7 +5171,7 @@ SUBROUTINE BD_FD_GA2_DAMPING(p_in, x_in, OtherState_in, m_in)
    CALL BD_GenerateDynamicElementGA2( x, OtherState, p, m, .FALSE.)
 
    m%LP_StifK_LU = 0.0_BDKi
-   CALL BD_AddModalDampingRHS(p, x, OtherState, m, .TRUE.)
+   ! CALL BD_AddModalDampingRHS(u, p, x, OtherState, m, .TRUE.)
 
    Damping_Diff = m%LP_StifK_LU - Damping_FD
 
@@ -5180,6 +5181,8 @@ SUBROUTINE BD_FD_GA2_DAMPING(p_in, x_in, OtherState_in, m_in)
    print *, 'Finite Difference Matrix Norm: \n', sum(Damping_FD*Damping_FD)
    print *, 'Error Diff Norm: \n', sum(Damping_Diff*Damping_Diff)
    print *, 'Relative Error Norm: \n', sum(Damping_Diff*Damping_Diff) / sum(Damping_FD*Damping_FD)
+
+   print *, 'Modal damping is not evaluated in this FD function on this branch so this does not work here.'
 
 END SUBROUTINE BD_FD_GA2_DAMPING
 
@@ -5905,7 +5908,7 @@ SUBROUTINE BD_CalcForceAcc( u, p, x, OtherState, m, ErrStat, ErrMsg )
 
    IF(p%damp_flag .EQ. 2) THEN
       ! Because modal damping is already global, it wouldn't make sense in BD_AssembleRHS.
-      CALL BD_AddModalDampingRHS(p, x, OtherState, m, .False.)
+      CALL BD_AddModalDampingRHS(u, p, x, OtherState, m, .False.)
    ENDIF
 
    ! Solve linear equations A * X = B for acceleration (F=ma) for nodes 2:p%node_total
@@ -6042,8 +6045,9 @@ END SUBROUTINE BD_ComputeElementMass
 !-----------------------------------------------------------------------------------------------------------------------------------
 !> This subroutine calculates the modal damping force
 ! Adds modal damping contributions to m%LP_RHS_LU
-SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
+SUBROUTINE BD_AddModalDampingRHS(u, p, x, OtherState, m, fact)
 
+   TYPE(BD_InputType),           INTENT(IN   )  :: u           !< Inputs at t
    TYPE(BD_ParameterType),       INTENT(IN   )  :: p           !< Parameters
    TYPE(BD_ContinuousStateType), INTENT(IN   )  :: x           !< Continuous states
    TYPE(BD_OtherStateType),      INTENT(IN   )  :: OtherState  !< other states (contains ref orientation)
@@ -6056,10 +6060,6 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
    integer(IntKi)    :: elem_node   ! looping indexing for node in the element number
    real(R8Ki)        :: r(3)        ! nodal position relative to root
    real(R8Ki)        :: NodeRot(3, 3)
-
-   NodeRot = reshape((/ 1.0_BDKi, 0.0_BDKi, 0.0_BDKi, &
-                        0.0_BDKi, 1.0_BDKi, 0.0_BDKi, &
-                        0.0_BDKi, 0.0_BDKi, 1.0_BDKi /), shape(NodeRot))
 
    ! 1. Velocities relative to root
    ! element loops
@@ -6096,6 +6096,9 @@ SUBROUTINE BD_AddModalDampingRHS(p, x, OtherState, m, fact)
    !
    ! OtherState%GlbRot = tranpose(u%RootMotion%Orientation(:, :, 1) evaluated at n)
    ! here, u%RootMotion%Orientation(:, :, 1) is evaluated at n+1, but is tranposed at this point
+
+   NodeRot = matmul(transpose(u%RootMotion%Orientation(:, :, 1)), OtherState%GlbRot)
+   NodeRot = transpose(NodeRot)
 
    do j = 2, p%node_total
 
