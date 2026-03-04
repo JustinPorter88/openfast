@@ -1901,28 +1901,6 @@ SUBROUTINE Init_ModalDamping(InitInp, x, OtherState, p, m, ErrStat, ErrMsg)
 
    p%ModalDampingMat = matmul(transpose(phiT_M), p%ModalDampingMat)
 
-   ! Apply the rotation of q here. When the actual dynamics are at the same position
-   ! as this, then this cancels with a rotation applied at the modal damping force.
-   ! Transforms as a tensor, so pre and post multiply by nodal rotations.
-   do j = 2, p%node_total
-
-      ! Loop over the nodes that apply to the damping matrix, so don't include the root node.
-      call BD_CrvMatrixR(x%q(4:6, j), NodeRot)
-      
-      k = (j-2)*6
-      p%ModalDampingMat(:, k+1:k+3) = matmul(p%ModalDampingMat(:, k+1:k+3), NodeRot)
-      p%ModalDampingMat(:, k+4:k+6) = matmul(p%ModalDampingMat(:, k+4:k+6), NodeRot)
-   end do
-   do j = 2, p%node_total
-
-      ! Loop over the nodes that apply to the damping matrix, so don't include the root node.
-      call BD_CrvMatrixR(x%q(4:6, j), NodeRot)
-      
-      k = (j-2)*6
-      p%ModalDampingMat(k+1:k+3, :) = matmul(transpose(NodeRot), p%ModalDampingMat(k+1:k+3, :))
-      p%ModalDampingMat(k+4:k+6, :) = matmul(transpose(NodeRot), p%ModalDampingMat(k+4:k+6, :))
-   end do
-
    call CalcModalParticipation()
 
    ! Allocate memory for the velocity vector that will be multiplied by the modal damping matrix
